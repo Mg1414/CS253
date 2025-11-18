@@ -1,0 +1,711 @@
+CS253 COLLEGE PATHFINDER – MEGA HANDBOOK FOR 10‑YEAR‑OLD YOU 🎓🧸
+================================================================
+
+Hi little engineer! 🤓✨ This is your big storybook for the **College
+PathFinder** project you did in CS253. It is written so that:
+- A very smart 10‑year‑old (you!) can understand it.
+- Future‑you can answer ANY interview question about this project.
+
+We will explain:
+- What the app does (big picture).
+- How the **frontend** (React) works.
+- How the **backend** (Node/Express/MongoDB) works.
+- What each important file does.
+- Common questions a kid or an interviewer might ask.
+
+Keep this open during prep; if you can retell this in your own words,
+you’re ready. 🚀
+
+----------------------------------------------------------------
+0. BIG PICTURE – WHAT IS COLLEGE PATHFINDER? 🌍
+----------------------------------------------------------------
+
+Imagine you are a student trying to choose a college.
+There are TONS of colleges, branches, ranks, cutoffs… very confusing! 😵
+
+**College PathFinder** is a web app that:
+- Lets you search for colleges.
+- Predicts which colleges you might get based on your All India Rank.
+- Lets students post questions and answers (like a tiny forum).
+- Has user accounts (register, login, OTP verification).
+- Has different profile types (college-going, college-searching, admin).
+
+It has three main pieces:
+1. 👀 **Frontend** – React app (in `college_frontend-main/`) that runs in
+   the browser.
+2. 🧠 **Backend** – Node.js + Express server (in `college_backend-main/`)
+   that exposes REST APIs.
+3. 📦 **Database** – MongoDB Atlas (hosted in the cloud) to store
+   users/colleges/posts.
+
+The frontend talks to the backend via HTTP requests (JSON), and the
+backend talks to MongoDB.
+
+----------------------------------------------------------------
+1. FRONTEND – REACT APP (COLLEGE_FRONTEND-MAIN) 💻
+----------------------------------------------------------------
+
+### 1.1 What is React?
+
+React is a JavaScript library for building user interfaces.
+In kid language:
+- The page is made of LEGO blocks called **components**.
+- Each component can keep its own data (state) and show some HTML.
+- When data changes, React re-renders the right pieces.
+
+In `college_frontend-main/src` you see:
+- `App.js` – main app shell.
+- `index.js` – starting point that mounts `<App />` into the page.
+- `components/` – all reusable UI blocks (pages, forms, widgets).
+- `services/` – helper files that call the backend APIs.
+- `utils/` – small helper functions (like pagination).
+- `config.js` – base API URL settings.
+
+We’ll walk the important pieces.
+
+### 1.2 index.js – starting React 🏁
+
+This file:
+- Imports React and ReactDOM.
+- Imports `App` and CSS.
+- Uses `ReactDOM.render(<App />)` (or `createRoot` depending on version)
+  to attach your React app to the `root` DOM node in `index.html`.
+
+So if the browser is a house, `index.js` is the person who says:
+> "Hey React, move into this room called root and start the app."
+
+### 1.3 App.js – main router + shell 🧭
+
+`App.js` usually:
+- Wraps everything in a router (`BrowserRouter`) so you can have URLs
+  like `/login`, `/register`, `/dashboard`.
+- Renders `Navbar` at top.
+- Renders different page components depending on the route:
+  - `/` → `Home`.
+  - `/search` → `Search`.
+  - `/search/results` → `SearchResult`.
+  - `/predict` → `collegePredictor`.
+  - `/compare` → `CollegeCompare`.
+  - `/register` → `register`.
+  - `/login` → `log`.
+  - `/profile` → `Profile`.
+  - `/posts` → `posts`/`PostPage`.
+
+It also likely uses `ProtectedRoute` to guard pages that require login.
+
+Kid view:
+- `App.js` is like a traffic police officer for the frontend.
+- It looks at the URL and decides which page component to show.
+
+### 1.4 Components overview 🧩
+
+In `src/components/` you have many `.jsx` files. Each is a React
+component (like a LEGO block). Let’s group them.
+
+**Layout & common UI**
+- `navbar.jsx` – the top navigation bar with links (Home, Search,
+  Login, etc.).
+- `common/jumbotron.jsx` – a big banner for the home page.
+- `common/pagination.jsx` – shows page numbers and next/prev.
+- `common/listgroup.jsx` – a list of options (e.g., tags, filters).
+- `common/input.jsx` – reusable text input.
+- `common/form.jsx` – base class for forms (handles validation and
+  submit patterns).
+- `LoadingSpinner.jsx` – shows a spinner while something loads.
+
+**Auth & user flows**
+- `register.jsx` – registration form:
+  - Collects name, email, password, user type, etc.
+  - Uses `userService` to call backend `/api/users`.
+- `log.jsx` – login form:
+  - Takes email/password.
+  - Uses `authService` to call backend `/api/auth` (or similar).
+  - Saves JWT token in local storage.
+- `otp.jsx` – OTP verification:
+  - After registration, backend sends OTP to email.
+  - This component accepts the code and calls `otpService` to verify.
+- `logout.jsx` – logs the user out by clearing token and redirecting.
+
+**Profiles & dashboards**
+- `Profile.jsx` – shows and edits user profile.
+- `profileAdmin.jsx` – admin view.
+- `profileCollegeGoing.jsx` – profile for current college students.
+- `profileCollegeSearching.jsx` – profile for students searching
+  colleges.
+- `dashboard.jsx` – overview panel with stats and quick actions.
+
+**Search, prediction, comparison**
+- `Home.jsx` – landing page with a summary and actions.
+- `search.jsx` – page for entering search criteria (rank, branch,
+  location, etc.).
+- `SearchForm.jsx` – form to input search parameters.
+- `SearchResult.jsx` – lists colleges that match criteria.
+- `collegePredictor.jsx` – takes rank, category, etc., calls backend
+  service to predict which colleges/branches are possible.
+- `CollegeCompare.jsx` – lets you select multiple colleges and compare
+  them side-by-side (fees, placements, etc.).
+
+**Forum / posts**
+- `posts.jsx` – shows list of posts/questions from students.
+- `PostPage.jsx` – shows one post with its replies.
+- `createpost.jsx` – form to create a new post.
+- `createReply.jsx` – form to reply to a post.
+
+**Other**
+- `not-found.jsx` – 404 page.
+- `search.jsx` – wrapper for search UI.
+
+### 1.5 Services – talking to the backend 🛰️
+
+`src/services/` contains JS files that wrap HTTP calls.
+
+- `httpService.js` – central place for Axios configuration:
+  - Sets base URL (`config.js`), headers, interceptors.
+  - Attaches JWT token to Authorization header.
+- `authService.js` – login/logout:
+  - `login(email, password)` calls backend auth API.
+  - `getCurrentUser()` decodes token to know who is logged in.
+- `userService.js` – registration, profile updates.
+- `otpService.js` – sending/verifying OTP.
+- `postCreateService.js`, `replyCreateService.js` – create posts and
+  replies.
+
+Kid view:
+- Services are like little messengers that carry letters from the
+  frontend to the backend and bring answers back.
+
+### 1.6 ProtectedRoute – guarding secret rooms 🚪
+
+`components/common/protectedRoute.jsx`:
+- Wraps around routes that require login.
+- Checks if `authService.getCurrentUser()` is non-null.
+- If not, redirects to `/login`.
+
+This is how the app stops unauthenticated users from accessing
+sensitive pages (like profile or post creation).
+
+----------------------------------------------------------------
+2. BACKEND – NODE + EXPRESS + MONGODB (COLLEGE_BACKEND-MAIN) 🧠
+----------------------------------------------------------------
+
+### 2.1 index.js – starting the server 🏁
+
+At the root of `college_backend-main` you have `index.js`.
+This file:
+- Imports Express.
+- Connects to MongoDB using `mongoose.connect(mongoDBURL)`.
+- Requires route files (`users`, `posts`, `tags`, `replies`, `otp`).
+- Sets up middleware:
+  - `express.json()` for parsing JSON bodies.
+  - `auth` middleware for JWT validation.
+  - `otp` middleware for OTP flows.
+- Starts the server on `PORT` (from `.env`, default 5000).
+
+So `index.js` is like the main teacher who:
+- Starts class.
+- Invites mini-teachers (routes) to handle certain topics.
+
+### 2.2 Middleware – security guards & helpers 🛡️
+
+In `middleware/`:
+
+- `auth.js` – JWT authentication:
+  - Reads token from `x-auth-token` header.
+  - Verifies it using `jwtPrivateKey` from `.env`.
+  - If valid, attaches decoded user to `req.user`.
+  - Else, returns 401.
+
+- `admin.js` – admin check:
+  - Checks `req.user.isAdmin` flag.
+  - If not admin, returns 403.
+
+- `otp.js` – OTP handling:
+  - Generates OTP.
+  - Sends email via `MAIL_USER`/`MAIL_PASS` settings.
+  - Verifies OTP during registration.
+
+Kid view:
+- Middleware are like gatekeepers in the hallway:
+  - Before you enter the class (route), they check who you are.
+
+### 2.3 Models – shapes of data in MongoDB 📦
+
+In `models/` you have many schema files using Mongoose.
+Each describes a collection in MongoDB.
+
+- `user.js`:
+  - Fields: name, email, password (hashed), role (admin, student,
+    college-going, etc.), profile details.
+  - Methods to generate JWT token.
+
+- `college.js`:
+  - Fields: name, location, branches, cutoffs, fees, ranking metrics.
+  - Helps the predictor and search features.
+
+- `post.js`:
+  - Fields: title, body, userId, timestamps, tags.
+  - Represents a question/post on the forum.
+
+- `replies.js`:
+  - Fields: postId, userId, body, timestamps.
+
+- `opinions.js` (if used):
+  - Could store likes/dislikes or rating-style feedback.
+
+- `tag.js`:
+  - Fields: name (e.g., "IIT", "Hostel", "Placements").
+
+Each model uses Mongoose schema definition like:
+```js
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: { type: String, required: true, unique: true },
+  // etc...
+});
+```
+
+### 2.4 Routes – API doors 🚪
+
+In `routes/` you define Express routers.
+
+- `users.js`:
+  - POST `/api/users` – register a new user.
+  - GET `/api/users/me` – get current user’s profile (using `auth`).
+  - PATCH/PUT for updating profile.
+
+- `otp.js`:
+  - POST `/api/otp/send` – send OTP to email.
+  - POST `/api/otp/verify` – verify OTP.
+
+- `posts.js`:
+  - GET `/api/posts` – list all or filtered posts.
+  - GET `/api/posts/:id` – get single post.
+  - POST `/api/posts` – create post (requires `auth`).
+
+- `replies.js`:
+  - POST `/api/replies` – create a reply.
+  - GET `/api/replies/:postId` – list replies for a post.
+
+- `tags.js`:
+  - List / create tags for posts.
+
+Kid view:
+- Each route file is like a classroom that teaches one subject
+  (users, posts, tags…) and has endpoints (doors) for different actions.
+
+----------------------------------------------------------------
+3. HOW FRONTEND & BACKEND TALK 🗣️↔️🧠
+----------------------------------------------------------------
+
+When you click a button in React, e.g. "Create Post":
+1. The form component collects data from the user.
+2. It calls a service function, e.g. `postCreateService.createPost(data)`.
+3. That service uses `httpService` (Axios) to POST JSON to the backend
+   endpoint `/api/posts`.
+4. Backend route `posts.js` receives the request.
+   - `auth` middleware checks the JWT.
+   - Handler validates body and saves the new post via `Post` model.
+5. Backend returns JSON with the created post.
+6. React updates state and re-renders the posts list.
+
+This is the request/response loop.
+
+4. MAPPING TO RESUME BULLETS 🎯
+----------------------------------------------------------------
+
+For CS253, your bullets might be:
+- Built a full-stack college search & recommendation web app using
+  React, Node, and MongoDB.
+- Implemented authentication with JWTs and email-based OTP.
+- Designed REST APIs for posts, replies, tags, and college search.
+
+This handbook already supports those explanations:
+- React/layout/components → full-stack front-end.
+- Auth middleware + JWT + OTP model → authentication.
+- Route and model structure → REST APIs.
+
+----------------------------------------------------------------
+5. COMMON INTERVIEW Q&A 💬
+----------------------------------------------------------------
+
+Here are some questions and simple answers you can reuse.
+
+**Q1: What does your College PathFinder app do?**
+A1: It’s a full-stack web app that helps students search and compare
+    colleges, predict admissions based on rank, and discuss queries
+    through a small forum. The frontend is in React, the backend uses
+    Node/Express, and data is stored in MongoDB Atlas.
+
+**Q2: Why separate frontend and backend?**
+A2: It improves modularity. The React frontend focuses on user
+    experience and routing, while the Node backend focuses on data,
+    security, and business logic. They talk via HTTP/JSON, so each can
+    evolve independently.
+
+**Q3: How did you handle authentication?**
+A3: I used JWTs for session management. On login, the backend verifies
+    credentials, signs a token with a secret key, and returns it to the
+    frontend. The frontend stores it (e.g., in local storage) and sends
+    it in the Authorization header for protected APIs. An `auth`
+    middleware validates tokens and attaches the user to the request.
+
+**Q4: What is OTP in your system?**
+A4: OTP is a one-time password used to verify new users’ emails. When
+    they sign up, the backend generates a random code, emails it using
+    the configured SMTP account (`MAIL_USER`, `MAIL_PASS`), and stores
+    the expectation. The user enters the code on the frontend, which
+    calls an OTP verification endpoint.
+
+**Q5: How do you structure MongoDB collections?**
+A5: I use Mongoose models for users, colleges, posts, replies, and
+    tags. Each model has a schema defining fields and constraints. For
+    example, the Post schema has fields like title, body, userId,
+    timestamps, and associated tags.
+
+**Q6: How does college prediction work?**
+A6: The predictor component collects the student’s rank and other
+    parameters, then calls a backend endpoint that queries the College
+    collection with filters based on rank ranges and branch preferences.
+    The results are returned as a list that the frontend displays.
+
+**Q7: How does routing work on the frontend vs backend?**
+A7: On the frontend, React Router maps URLs to components
+    (`/predict` → `collegePredictor`, etc.). On the backend, Express
+    routers map API paths to handler functions (`/api/posts` → posts
+    router). They are separate routing layers: UI routing and API
+    routing.
+
+----------------------------------------------------------------
+6. HOW TO STUDY THIS FILE 📖
+----------------------------------------------------------------
+
+1. Read the "Big Picture" and front-end sections until you can explain
+   them out loud.
+2. Read the backend section (middleware, models, routes) and imagine how
+   data flows from browser → React → services → Express → MongoDB.
+3. Practice the Q&A section as if an interviewer is asking you.
+
+If you can do that, you will be able to explain your CS253 project to a
+child AND defend it in any interview. 🎓🚀
+
+----------------------------------------------------------------
+7. FRONTEND – FILE-BY-FILE DEEPER LOOK 🔍 (KID VERSION)
+----------------------------------------------------------------
+
+Now let’s zoom in a bit more and talk about what each important
+frontend file does, like a story for each LEGO piece. We won’t list
+every single line, but we’ll cover the main files and patterns so you
+can answer "what does X do?" for any big file name.
+
+### 7.1 Top-level files in `src/`
+
+- `index.js`
+  - Mounts `<App />` into the DOM.
+  - This is where React starts.
+
+- `App.js`
+  - Loads the current user (by decoding the JWT from localStorage and
+    fetching the user from backend).
+  - Renders `NavBar` and sets up the `Route` / `Switch` / `Redirect`
+    logic.
+  - Guards routes like `/profile`, `/dashboard`, `/post/:id`,
+    `/new-post` based on `this.state.user` and `user.isVerified`.
+  - It’s the traffic controller for which page appears for which URL.
+
+- `config.js`
+  - Exports API endpoint URLs like `api.usersEndPoint`,
+    `api.postsEndPoint`, etc.
+  - If the backend base URL changes, you update it here.
+
+- `utils/paginate.js`
+  - Contains a `paginate(items, pageNumber, pageSize)` function.
+  - Splits big arrays (like posts) into smaller pages.
+  - Used by `dashboard.jsx` for showing 4 posts per page.
+
+### 7.2 Common UI pieces (`components/common/`)
+
+- `form.jsx`
+  - A base React component that other forms extend.
+  - Has helper methods to:
+    - Render input fields.
+    - Handle `onSubmit`.
+    - Validate input (usually with Joi or manual checks).
+  - Pattern: children like `register.jsx` extend this to avoid
+    duplicating form logic.
+
+- `input.jsx`
+  - A functional component that renders a labeled `<input>` with
+    props like `name`, `value`, `onChange`, and `error`.
+  - If there is an `error` string, it shows an error message below.
+
+- `pagination.jsx`
+  - Renders pagination controls given `itemCount`, `pageSize`, and
+  `currentPage`.
+  - Builds an array of page numbers and clickable links.
+  - Calls `onPageChange(page)` when a new page is clicked.
+
+- `jumbotron.jsx`
+  - A simple banner component with some text (like "Welcome to College
+    Pathfinder").
+
+- `protectedRoute.jsx`
+  - Wraps React Router’s `Route`.
+  - Checks `authService.getCurrentUser()`.
+  - If no user, redirects to login.
+  - Else renders the given component.
+
+### 7.3 Navigation & layout
+
+- `navbar.jsx`
+  - Renders nav links: Home, Forum (dashboard), Search, Compare,
+    College Predictor, Profile, Login/Logout/Register.
+  - It receives `user` as a prop:
+    - If `user` is null, it shows Login/Register.
+    - If `user` exists, it shows "Hi username" and Logout.
+  - Has a `handleToggle` function for mobile view (hamburger menu).
+
+- `Home.jsx`
+  - Landing page.
+  - Shows the main banner (`Jumbotron`) and maybe some info sections.
+  - Provides links/buttons to important app areas (search, predictor,
+    forum).
+
+### 7.4 Auth-related components
+
+- `register.jsx`
+  - Extends `Form`.
+  - Has state fields for `name`, `email`, `username`, `password`,
+    `userType`, and maybe `college`, `branch`, `year`.
+  - On submit:
+    - Calls `userService.register(user)` which POSTs to `/users`.
+    - Gets JWT in header, stores it in localStorage.
+    - Redirects to `/otp` or `/profile` depending on flow.
+
+- `log.jsx`
+  - Login form.
+  - Collects `email`/`password`.
+  - Calls `authService.login(email, password)`.
+  - On success, stores token and redirects (e.g., to `/dashboard`).
+
+- `otp.jsx`
+  - Asks user to enter the OTP she received via email.
+  - Uses `otpService.verifyOTP(email, code)` (depending on design).
+  - On success, marks user as `isVerified: true` and redirects.
+
+- `logout.jsx`
+  - On mount, clears token (and possibly user info) from localStorage.
+  - Redirects to home or login.
+
+### 7.5 Profile & dashboards
+
+- `Profile.jsx`
+  - Uses `user` prop (from `App.js`) to display and edit profile
+    fields: college, branch, year, opinions, etc.
+  - May call `userService.updateProfile(user)` via form submission.
+
+- `profileAdmin.jsx`
+  - Admin panel view: shows counts of users, maybe links to moderate
+    posts, etc.
+
+- `profileCollegeGoing.jsx` / `profileCollegeSearching.jsx`
+  - Specialized views tailored to user type (college-going student vs
+    searching student).
+  - Show and edit fields like `college`, `branch`, `year` for
+    college-going, and rank preferences for searching users.
+
+- `dashboard.jsx`
+  - On `componentDidMount`, fetches all posts and tags from backend.
+  - Sorts posts by time (most recent first).
+  - Stores them in `state.allposts` and `state.tags`.
+  - Allows tag selection to filter posts.
+  - Uses `paginate` to split filtered posts into pages.
+  - Renders `Posts` list + `ListGroup` (tags) + `Pagination`.
+  - Shows a "New Post" button if `user` exists.
+
+### 7.6 Search & prediction
+
+- `search.jsx`
+  - Renders `SearchForm` and `SearchResult` or handles searching
+    results.
+  - Captures filters (college name, branch, location) and calls
+    backend search API (via a service).
+
+- `SearchForm.jsx`
+  - Form with inputs for rank, category, city, branch, etc.
+  - On submit, triggers a search action passed from parent.
+
+- `SearchResult.jsx`
+  - Receives list of colleges from parent.
+  - Renders them in cards or a table.
+  - May include "view details" or "compare" actions.
+
+- `collegePredictor.jsx`
+  - Form where user enters AIR and maybe category.
+  - Calls a backend endpoint that uses the `College` collection to
+    return likely matches.
+  - Renders predictions as a list.
+
+- `CollegeCompare.jsx`
+  - UI that lets user pick two colleges (college1, college2).
+  - Calls backend compare endpoint to fetch their details.
+  - Shows a side-by-side comparison (fees, NIRF rank, average package,
+    etc.).
+
+### 7.7 Forum & posts
+
+- `posts.jsx`
+  - Receives an array of posts and renders them as cards or list.
+  - Each post item shows title, short description, and maybe author.
+  - Each post has a link to `/post/:id` (PostPage).
+
+- `PostPage.jsx`
+  - Fetches one post by ID (from route param) and its replies.
+  - Increases the view count on the backend.
+  - Shows full description and replies.
+  - Contains a `createReply` form or link.
+
+- `createpost.jsx`
+  - Form to create new post.
+  - Fields: title, description, tags.
+  - On submit, calls backend `/posts/create` via `postCreateService`.
+
+- `createReply.jsx`
+  - Form to add a comment under a post.
+  - On submit, calls backend `/reply/create` or similar.
+
+----------------------------------------------------------------
+8. BACKEND – FILE-BY-FILE DEEPER LOOK 🔍
+----------------------------------------------------------------
+
+Now let’s drill into the backend files in `college_backend-main`.
+
+### 8.1 index.js – teacher who starts school 🏫
+
+- Loads environment variables from `.env` (Mongo URL, jwtPrivateKey,
+  mail creds, port).
+- Connects to MongoDB using `mongoose.connect`.
+- Uses `express.json()` and `express.urlencoded()` so request bodies
+  become `req.body` objects.
+- Uses `cookieParser()` and `cors()` to allow frontend to call APIs
+  from different origin.
+- Mounts routers:
+  - `/users` → `routes/users.js`
+  - `/posts` → `routes/posts.js`
+  - `/tags`  → `routes/tags.js`
+  - `/reply` → `routes/replies.js`
+  - `/otp`   → `routes/otp.js`
+- Starts the server with `app.listen(port)`.
+
+### 8.2 Middleware folder
+
+- `auth.js`
+  - Reads JWT from `x-auth-token` header (or cookie).
+  - Verifies token with `jwtPrivateKey`.
+  - If OK, attaches user ID (and isAdmin flag) to `req.user`.
+  - If no or invalid token, responds with 401.
+
+- `admin.js`
+  - Checks `req.user.isAdmin`.
+  - If false, returns 403.
+
+- `otp.js`
+  - Exports functions `generateOTP` and `sendOTP`.
+  - `generateOTP` builds a 6-digit code.
+  - `sendOTP(email, code)` uses `nodemailer` and `MAIL_USER`/`MAIL_PASS`
+    to send the code.
+  - Used by the OTP route during registration/verification.
+
+### 8.3 Models folder (Mongoose schemas)
+
+- `user.js`
+  - Defines the User schema:
+    - `name`, `email`, `username`, `password`.
+    - `userType` (one of `collegeS`, `collegeG`, `Admin`).
+    - `isVerified` boolean.
+    - Profile opinion fields (`AcademicOpinion`, etc.).
+    - `college`, `branch`, `year`.
+  - Adds method `generateAuthToken` to sign a JWT with `_id` and
+    `isAdmin`.
+
+- `college.js`
+  - Simple schema with `name`, `location`, `nirfRanking`, `description`,
+    and `package` (typical placement package info).
+  - Used by search and compare features.
+
+- `post.js`
+  - Schema fields:
+    - `title`, `description`.
+    - `tags` (array of `tagSchema`).
+    - `author` (ref to `User`).
+    - `views`, `upvotes`, `reports`, `bookmarks`, `time`.
+  - Exports `Post` model.
+  - Has `validatePost` function using Joi to validate input data.
+
+- `replies.js`
+  - Schema fields: `comment`, `post` (ref to `Post`), `user` (ref to
+    `User`), `upvotes`, `time`.
+  - Exports `Reply` and `validateReply`.
+
+- `opinions.js`
+  - Schema fields: `opinion[]`, `college`, `branch`, `year`, `username`.
+  - Represents textual opinions / reviews about a college/branch/year.
+
+- `tag.js`
+  - Schema: `name` and `used` count.
+  - Exports `Tag` and `tagSchema`.
+  - Tags are attached to posts.
+
+### 8.4 Routes folder – endpoints
+
+- `routes/users.js`
+  - POST `/users` (or `/users/register`): create a new user after
+    validating input.
+  - GET `/users/me`: get current user’s data (requires `auth`).
+  - PUT `/users/verify/:id`: set `isVerified` flag.
+  - GET `/users/user-count`: returns counts of each user type.
+  - DELETE `/users/profile/deleteByEmail/:email` and
+    `/users/profile/deleteByUsername/:username` for admin cleanup.
+  - GET `/users/search` and `/users/compare` for college-going vs
+    searching student queries.
+
+- `routes/otp.js`
+  - POST `/otp/generate`: generate and send OTP to a user’s email.
+  - (If more endpoints exist, verify and complete OTP flows.)
+
+- `routes/posts.js`
+  - GET `/posts/` – list all posts with author info.
+  - GET `/posts/user/:_id` – list posts by a specific user ID.
+  - GET `/posts/:id` – fetch single post and increment `views`.
+  - POST `/posts/create` – create new post (requires `auth`).
+  - PUT `/posts/bookmark/:id` – toggle bookmark for current user.
+  - PUT `/posts/upvote/:id` / `report/:id` – manage interactions.
+  - DELETE `/posts/:id` – delete post and all its replies.
+
+- `routes/replies.js`
+  - POST `/reply/create` – create reply for a post.
+  - GET `/reply/:postId` – fetch replies for a post.
+
+- `routes/tags.js`
+  - GET `/tags/` – list all tags.
+  - POST `/tags/` – create a new tag.
+  - Possibly increase `used` count when tag is attached to a post.
+
+----------------------------------------------------------------
+9. SUMMARY: WHAT EACH SIDE DOES (ULTRA SHORT) 🧠
+----------------------------------------------------------------
+
+- Frontend (React):
+  - Builds pages using components under `components/`.
+  - Uses `services/` to talk to the backend via HTTP.
+  - Handles routing, forms, and rendering.
+
+- Backend (Node/Express/MongoDB):
+  - Starts in `index.js`.
+  - Uses middleware for auth and OTP.
+  - Uses Mongoose models for users, colleges, posts, replies, tags.
+  - Uses route files to define API endpoints.
+
+If you know this section plus the high-level sections above, you can
+comfortably answer: "What does file X do? How does it fit into the
+whole app?" in a simple way any 10‑year‑old (or interviewer) will
+understand. 🎓🧸
